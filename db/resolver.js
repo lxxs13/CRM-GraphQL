@@ -1,6 +1,7 @@
 const Usuario = require('../models/Usuario');
 const Producto = require('../models/Producto');
 const Cliente = require('../models/Cliente');
+const Pedido = require('../models/Pedido');
 const bcryptjs = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 
@@ -195,6 +196,24 @@ const resolvers = {
             if (clienteExiste.vendedor.toString() !== ctx.id)
                 throw new Error("No tienes las credenciales");
 
+            for await (const articulo of input.pedido) {
+                const { id } = articulo;
+
+                const producto = await Producto.findById(id);
+
+                if (articulo.cantidad > producto.existencia) {
+                    throw new Error(`EL articulo : ${producto.nombre} excede la cantidad disponible`);
+                } else {
+                    producto.existencia = producto.existencia - articulo.cantidad;
+                    await producto.save();
+                }
+            };
+
+            const nuevoPedido = new Pedido(input);
+            nuevoPedido.vendedor = ctx.id;
+
+            const resultado = await nuevoPedido.save();
+            return resultado;
         }
         //#endRegion
 
